@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { UsersService } from 'src/users/users.service';
 
 type AuthInput = { username: string; password: string };
@@ -7,18 +8,17 @@ type AuthResult = { accessToken: string; userId: number; username: string };
 
 @Injectable()
 export class AuthService {
-  constructor(private userService: UsersService) {}
+  constructor(
+    private userService: UsersService,
+    private jwtService: JwtService,
+  ) {}
   authenticate(input: AuthInput): AuthResult {
     const user = this.validateUser(input);
     if (!user) {
       throw new UnauthorizedException();
     }
 
-    return {
-      accessToken: 'fake-jwt-token', // In a real application, generate a JWT token here
-      userId: user.userId,
-      username: user.username,
-    };
+    return this.signIn(user);
   }
 
   validateUser(input: AuthInput): SignInData | null {
@@ -30,5 +30,18 @@ export class AuthService {
       };
     }
     return null;
+  }
+
+  signIn(user: SignInData): AuthResult {
+    const tokenPayload = {
+      sub: user.userId,
+      username: user.username,
+    };
+    const accessToken = this.jwtService.sign(tokenPayload);
+    return {
+      accessToken,
+      username: user.username,
+      userId: user.userId,
+    };
   }
 }
